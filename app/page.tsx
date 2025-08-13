@@ -69,17 +69,6 @@ export default function ClothSwap() {
     setJobState('uploading');
 
     try {
-      const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
-
-      if (!webhookUrl) {
-        // Simulate processing
-        setJobState('processing');
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        setResultUrl('https://placehold.co/1200x675/png?text=ClothSwap+Preview');
-        setJobState('done');
-        return;
-      }
-
       setJobState('processing');
 
       const submitData = new FormData();
@@ -91,7 +80,8 @@ export default function ClothSwap() {
         submitData.append('prompt', formData.prompt.trim());
       }
 
-      const response = await fetch(webhookUrl, {
+      // Always send to backend route for field remapping
+      const response = await fetch('/api/clothswap', {
         method: 'POST',
         body: submitData,
       });
@@ -102,7 +92,7 @@ export default function ClothSwap() {
 
       const responseData = await response.json();
       const imageUrl = extractImageUrl(responseData);
-      
+
       setResultUrl(imageUrl);
       setJobState('done');
     } catch (err) {
@@ -110,6 +100,7 @@ export default function ClothSwap() {
       setJobState('error');
     }
   };
+
 
   const handleReset = () => {
     setJobState('idle');
