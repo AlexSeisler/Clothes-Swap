@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-
+export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-
+    
     // Build new FormData with remapped field names
     const forwardData = new FormData();
 
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
+    console.log("n8n raw response:", data);
     return NextResponse.json(data);
   } catch (err: any) {
     console.error("Error forwarding to n8n:", err);

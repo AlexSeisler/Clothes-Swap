@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // Removed static export so API routes can run in server mode
   eslint: {
     ignoreDuringBuilds: true,
   },
