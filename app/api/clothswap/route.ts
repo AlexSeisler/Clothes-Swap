@@ -1,39 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fal } from "@fal-ai/client";
+
 export const dynamic = "force-dynamic";
+
+// Configure FAL credentials from env
+fal.config({
+  credentials: process.env.FAL_KEY || ""
+});
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    
-    // Build new FormData with remapped field names
-    const forwardData = new FormData();
 
     const sourceImage = formData.get("source_image");
-    if (sourceImage && sourceImage instanceof File) {
-      forwardData.append("human_image", sourceImage, sourceImage.name);
-    }
-
     const referenceGarment = formData.get("reference_garment");
-    if (referenceGarment && referenceGarment instanceof File) {
-      forwardData.append("garment_image", referenceGarment, referenceGarment.name);
-    }
-
     const prompt = formData.get("prompt");
-    if (prompt && typeof prompt === "string") {
-      forwardData.append("prompt", prompt);
+
+    if (!(sourceImage instanceof File)) {
+      return NextResponse.json({ error: "source_image file is required" }, { status: 400 });
+    }
+    if (!(referenceGarment instanceof File)) {
+      return NextResponse.json({ error: "reference_garment file is required" }, { status: 400 });
     }
 
-    // Forward to n8n webhook
-    const n8nUrl = process.env.N8N_WEBHOOK_URL || "https://1caade28f2a1.ngrok-free.app/webhook/clothswap";
+    // Upload files to FAL storage
+    const humanImageUrl = await fal.storage.upload(sourceImage);
+    const garmentImageUrl = await fal.storage.upload(referenceGarment);
+
+    // Prepare data for n8n webhook
+    const forwardData = new FormData();
+    forwardData.append("human_image_url", humanImageUrl);
+    forwardData.append("garment_image_url", garmentImageUrl);
+
+    if (prompt && typeof prompt === "string" && prompt.trim()) {
+      forwardData.append("prompt", prompt.trim());
+    }
+
+    // Forward to n8n webhook URL
+    const n8nUrl =
+      process.env.N8N_WEBHOOK_URL ||
+      "https://1caade28f2a1.ngrok-free.app/webhook/clothswap";
+
     const res = await fetch(n8nUrl, {
       method: "POST",
       body: forwardData
     });
 
     const data = await res.json();
-    console.log("n8n raw response:", data);
     return NextResponse.json(data);
+
   } catch (err: any) {
-    console.error("Error forwarding to n8n:", err);
-    return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
+    console.error("Error in ClothSwap API route:", err);
+    return NextResponse.json(
+      { error: err.message || "Server error" },
+      { status: 500 }
+    );
   }
 }
